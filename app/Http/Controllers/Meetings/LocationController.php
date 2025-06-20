@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LocationRequest;
 use App\Http\Resources\LocationResource;
+use GeoIP;
 
 class LocationController extends Controller
 {
@@ -24,7 +25,20 @@ class LocationController extends Controller
      */
     public function store(LocationRequest  $request)
     {
-        $validated = $request->validated(); // Validated data is automatically retrieved from the validated method in LocationRequest
+        $validated = $request->validated();
+        // Ambil lokasi berdasarkan IP user
+        $ip = $request->ip();
+        $geo = geoip($ip);
+        // Jika latitude/longitude tidak dikirim, isi otomatis dari geoip
+        if (empty($validated['latitude']) && $geo->lat) {
+            $validated['latitude'] = $geo->lat;
+        }
+        if (empty($validated['longitude']) && $geo->lon) {
+            $validated['longitude'] = $geo->lon;
+        }
+        if (empty($validated['description_address']) && $geo->city) {
+            $validated['description_address'] = $geo->city . ', ' . $geo->country;
+        }
         $location = Location::create($validated); // Create the location with validated data
         return new LocationResource($location); // Return the newly created location as a resource
     }
